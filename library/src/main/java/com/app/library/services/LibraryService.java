@@ -5,11 +5,7 @@ import com.app.library.models.Member;
 import com.app.library.models.BorrowingRecord;
 
 import java.time.LocalDate;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.List;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -34,8 +30,11 @@ public class LibraryService {
     }
 
     // Add a new book
-    public void addBook(Book book) {
-        books.put(book.getId(), book);
+    public void addBooks(Book[] newBooks) {
+        Map<Long, Book> newMapBooks = Arrays.stream(newBooks).collect(
+                        Collectors.toMap(Book::getId, book -> book));
+
+        books.putAll(newMapBooks);
     }
 
     // Update a book
@@ -46,6 +45,53 @@ public class LibraryService {
     // Delete a book by ID
     public void deleteBook(Long id) {
         books.remove(id);
+    }
+
+    public Collection<Book> getBooksByGenre(String genre) {
+        Collection<Book> genreBooks = (Collection<Book>)books.values();
+        return genreBooks.stream().filter(book -> (book.getGenre()).toLowerCase().contains(genre.toLowerCase())).collect(Collectors.toList());
+    }
+
+    public Collection<Book> getBooksByAuthorAndGenre(String author, String genre) {
+        Collection<Book> allBooks = (Collection<Book>) (books.values());
+        return allBooks.stream()
+                .filter(book -> book.getAuthor().equalsIgnoreCase(author)) // Filter by author
+                .filter(book -> genre == null || book.getGenre().toLowerCase().contains(genre.toLowerCase())) // Optional filter by genre
+                .collect(Collectors.toList());
+    }
+
+    public Collection<Book> getBooksDueOnDate(LocalDate dueDate) {
+        Collection<BorrowingRecord> allRecords = (Collection<BorrowingRecord>)(borrowingRecords.values());
+        ArrayList<Book> dueBooks = new ArrayList<Book>();
+        Collection<BorrowingRecord> tempRecords = allRecords.stream()
+                .filter(record -> record.getDueDate().equals(dueDate)) // Filter by dueDate
+                .toList();
+        // For each filtered record, find the corresponding book and add it to the dueBooks list
+        for (BorrowingRecord record : tempRecords) {
+            Book book = books.get(record.getBookId());
+            if (book != null) {
+                dueBooks.add(book); // Add the book to the dueBooks list
+            }
+        }
+        return dueBooks;
+    }
+
+    public LocalDate checkAvailability(Long bookId) {
+        Collection<BorrowingRecord> allRecords = (Collection<BorrowingRecord>)(borrowingRecords.values());
+        Book bookToCheck = books.get(bookId);
+        if (bookToCheck == null) {
+            return null;
+        } else {
+            if (bookToCheck.getAvailableCopies() >= 1) {
+                return LocalDate.now();
+            } else {
+                List<BorrowingRecord> sortedRecords = allRecords.stream()
+                        .filter(record -> Objects.equals(record.getBookId(), bookId)) // Filter by bookId
+                        .sorted((b1, b2) -> b1.getDueDate().compareTo(b2.getDueDate())) // Sort by dueDate (soonest to latest)
+                        .toList();
+                return sortedRecords.getFirst().getDueDate();
+            }
+        }
     }
 
     // ==================== Member Methods ====================
@@ -61,8 +107,11 @@ public class LibraryService {
     }
 
     // Add a new member
-    public void addMember(Member member) {
-        members.put(member.getId(), member);
+    public void addMember(Member[] newMembers) {
+        Map<Long, Member> newMapMembers = Arrays.stream(newMembers).collect(
+                            Collectors.toMap(Member::getId, member -> member));
+
+        members.putAll(newMapMembers);
     }
 
     // Update a member

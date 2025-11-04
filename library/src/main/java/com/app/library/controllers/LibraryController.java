@@ -49,12 +49,13 @@ public class LibraryController {
 		}
     }
 
-    // Add a new book
+    // Add new books
     @PostMapping("/books")
-    public ResponseEntity<Book> addBook(@RequestBody Book book) {
-        libraryService.addBook(book);
-        logger.info("The book was added");
-        return new ResponseEntity<>(book, HttpStatus.CREATED);
+    public ResponseEntity<Integer> addBook(@RequestBody Book[] books) {
+        libraryService.addBooks(books);
+
+        logger.info("The books were added");
+        return new ResponseEntity<>(libraryService.getAllBooks().size(), HttpStatus.CREATED);
     }
 
     // Update a book
@@ -80,6 +81,43 @@ public class LibraryController {
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
+    //It accepts a query parameter genre, for example, /books/genre?genre=Fiction.
+    @GetMapping("/books/genre")
+    public ResponseEntity<Collection<Book>> getBooksByGenre(@RequestParam String genre){
+        return new ResponseEntity<>(libraryService.getBooksByGenre(genre), HttpStatus.OK);
+    }
+
+    //An optional query parameter genre (e.g., /books/author/Harper%20Lee?genre=Fiction)
+    @GetMapping("/books/author/{author}")
+    public ResponseEntity<Collection<Book>> checkGenreForAuthor(
+            @PathVariable String author,
+            @RequestParam(required = false) String genre) {
+        Collection<Book> books = libraryService.getBooksByAuthorAndGenre(author, genre);
+        logger.info("The books retrieved for the author and genre {} - {}", author, genre);
+        return new ResponseEntity<>(books, HttpStatus.OK);
+    }
+
+    //It accepts a query parameter dueDate in the format dd/MM/yyyy. For example, /books/dueondate?dueDate=20/03/2025).
+    @GetMapping("/books/dueondate")
+    public ResponseEntity<Collection<Book>> getBooksDueOnDate(
+            @RequestParam("dueDate") @DateTimeFormat(pattern = "dd/MM/yyyy") LocalDate dueDate) {
+        Collection<Book> books = libraryService.getBooksDueOnDate(dueDate);
+        logger.info("The books retrieved by due date {}", dueDate);
+        return new ResponseEntity<>(books, HttpStatus.OK);
+    }
+
+    //It accepts a query parameter bookId (e.g., /bookavailabileDate?bookId=1)
+    @GetMapping("/bookavailabileDate")
+    public ResponseEntity<LocalDate> checkAvailability(
+            @RequestParam Long bookId) {
+        LocalDate avlDate = libraryService.checkAvailability(bookId);
+        if(avlDate == null) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } else {
+            return new ResponseEntity<>(avlDate, HttpStatus.OK);
+        }
+    }
+
     // ==================== Member Endpoints ====================
 
     // Get all members
@@ -102,12 +140,13 @@ public class LibraryController {
 		}
     }
 
-    // Add a new member
+    // Add new members
     @PostMapping("/members")
-    public ResponseEntity<Member> addMember(@RequestBody Member member) {
-        libraryService.addMember(member);
-        logger.info("The member has been added ");
-        return new ResponseEntity<>(member, HttpStatus.CREATED);
+    public ResponseEntity<Integer> addMember(@RequestBody Member[] members) {
+            libraryService.addMember(members);
+
+        logger.info("The members have been added ");
+        return new ResponseEntity<>(libraryService.getAllMembers().size(), HttpStatus.CREATED);
     }
 
     // Update a member
